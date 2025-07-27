@@ -4,581 +4,568 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi Quotidien - Sport, Poids, Alcool</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/umd/Recharts.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .recharts-wrapper {
             font-family: inherit;
         }
-        .y-axis-left { fill: #3B82F6; }
-        .y-axis-right { fill: #EF4444; }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #666;
+        }
         .config-panel {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        /* Assurer que React se charge */
+        #root {
+            min-height: 100vh;
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div class="loading">
+            <div>Chargement de l'application...</div>
+        </div>
+    </div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar } = Recharts;
+        // Vérifier que toutes les dépendances sont chargées
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+            document.getElementById('root').innerHTML = `
+                <div style="padding: 20px; text-align: center; color: red;">
+                    <h2>Erreur de chargement</h2>
+                    <p>Les bibliothèques React ne se sont pas chargées correctement.</p>
+                    <p>Veuillez recharger la page.</p>
+                </div>
+            `;
+        } else {
+            console.log('React chargé avec succès');
+            
+            const { useState, useEffect } = React;
+            const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar } = Recharts || {};
 
-        const DailyTracker = () => {
-            // État principal des données
-            const [data, setData] = useState([
+            const DailyTracker = () => {
                 // Données d'exemple pour démonstration
-                {
-                    date: '2024-01-15',
-                    sportTapis: 30,
-                    sportVelo: 45,
-                    sportCourse: 0,
-                    alcool: 1,
-                    poids: 75.2
-                },
-                {
-                    date: '2024-01-16',
-                    sportTapis: 0,
-                    sportVelo: 60,
-                    sportCourse: 20,
-                    alcool: 0,
-                    poids: 75.0
-                },
-                {
-                    date: '2024-01-17',
-                    sportTapis: 25,
-                    sportVelo: 0,
-                    sportCourse: 30,
-                    alcool: 2,
-                    poids: 74.8
-                }
-            ]);
+                const [data, setData] = useState([
+                    {
+                        date: '2024-01-15',
+                        sportTapis: 30,
+                        sportVelo: 45,
+                        sportCourse: 0,
+                        alcool: 1,
+                        poids: 75.2
+                    },
+                    {
+                        date: '2024-01-16',
+                        sportTapis: 0,
+                        sportVelo: 60,
+                        sportCourse: 20,
+                        alcool: 0,
+                        poids: 75.0
+                    },
+                    {
+                        date: '2024-01-17',
+                        sportTapis: 25,
+                        sportVelo: 0,
+                        sportCourse: 30,
+                        alcool: 2,
+                        poids: 74.8
+                    }
+                ]);
 
-            const [currentEntry, setCurrentEntry] = useState({
-                date: new Date().toISOString().split('T')[0],
-                sportTapis: 0,
-                sportVelo: 0,
-                sportCourse: 0,
-                alcool: 0,
-                poids: 0
-            });
-
-            const [activeTab, setActiveTab] = useState('saisie');
-            const [exportData, setExportData] = useState('');
-            const [importData, setImportData] = useState('');
-
-            const handleInputChange = (field, value) => {
-                setCurrentEntry(prev => ({
-                    ...prev,
-                    [field]: field === 'date' ? value : (parseFloat(value) || 0)
-                }));
-            };
-
-            const handleSubmit = () => {
-                const existingIndex = data.findIndex(item => item.date === currentEntry.date);
-                let newData;
-                
-                if (existingIndex >= 0) {
-                    // Mise à jour d'une entrée existante
-                    newData = [...data];
-                    newData[existingIndex] = { ...currentEntry };
-                } else {
-                    // Ajout d'une nouvelle entrée
-                    newData = [...data, { ...currentEntry }].sort((a, b) => new Date(a.date) - new Date(b.date));
-                }
-                
-                setData(newData);
-                
-                // Réinitialiser le formulaire avec la date du lendemain
-                const nextDay = new Date(currentEntry.date);
-                nextDay.setDate(nextDay.getDate() + 1);
-                setCurrentEntry({
-                    date: nextDay.toISOString().split('T')[0],
+                const [currentEntry, setCurrentEntry] = useState({
+                    date: new Date().toISOString().split('T')[0],
                     sportTapis: 0,
                     sportVelo: 0,
                     sportCourse: 0,
                     alcool: 0,
                     poids: 0
                 });
-            };
 
-            const handleDelete = (dateToDelete) => {
-                const newData = data.filter(item => item.date !== dateToDelete);
-                setData(newData);
-            };
+                const [activeTab, setActiveTab] = useState('saisie');
+                const [exportData, setExportData] = useState('');
+                const [importData, setImportData] = useState('');
 
-            const formatDate = (dateStr) => {
-                const date = new Date(dateStr);
-                return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-            };
+                const handleInputChange = (field, value) => {
+                    setCurrentEntry(prev => ({
+                        ...prev,
+                        [field]: field === 'date' ? value : (parseFloat(value) || 0)
+                    }));
+                };
 
-            // Export des données en CSV
-            const exportToCSV = () => {
-                const headers = ['Date', 'Sport Tapis (min)', 'Sport Vélo (min)', 'Sport Course (min)', 'Alcool (verres)', 'Poids (kg)'];
-                const csvContent = [
-                    headers.join(','),
-                    ...data.map(row => [
-                        row.date,
-                        row.sportTapis,
-                        row.sportVelo,
-                        row.sportCourse,
-                        row.alcool,
-                        row.poids
-                    ].join(','))
-                ].join('\n');
-                
-                setExportData(csvContent);
-            };
-
-            // Import des données depuis CSV
-            const importFromCSV = () => {
-                try {
-                    const lines = importData.trim().split('\n');
-                    if (lines.length < 2) {
-                        alert('Format CSV invalide');
-                        return;
+                const handleSubmit = () => {
+                    const existingIndex = data.findIndex(item => item.date === currentEntry.date);
+                    let newData;
+                    
+                    if (existingIndex >= 0) {
+                        newData = [...data];
+                        newData[existingIndex] = { ...currentEntry };
+                    } else {
+                        newData = [...data, { ...currentEntry }].sort((a, b) => new Date(a.date) - new Date(b.date));
                     }
                     
-                    const newData = lines.slice(1).map(line => {
-                        const [date, sportTapis, sportVelo, sportCourse, alcool, poids] = line.split(',');
+                    setData(newData);
+                    
+                    // Réinitialiser avec date suivante
+                    const nextDay = new Date(currentEntry.date);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    setCurrentEntry({
+                        date: nextDay.toISOString().split('T')[0],
+                        sportTapis: 0,
+                        sportVelo: 0,
+                        sportCourse: 0,
+                        alcool: 0,
+                        poids: 0
+                    });
+                };
+
+                const handleDelete = (dateToDelete) => {
+                    const newData = data.filter(item => item.date !== dateToDelete);
+                    setData(newData);
+                };
+
+                const formatDate = (dateStr) => {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                };
+
+                const exportToCSV = () => {
+                    const headers = ['Date', 'Sport Tapis (min)', 'Sport Vélo (min)', 'Sport Course (min)', 'Alcool (verres)', 'Poids (kg)'];
+                    const csvContent = [
+                        headers.join(','),
+                        ...data.map(row => [
+                            row.date,
+                            row.sportTapis,
+                            row.sportVelo,
+                            row.sportCourse,
+                            row.alcool,
+                            row.poids
+                        ].join(','))
+                    ].join('\n');
+                    
+                    setExportData(csvContent);
+                };
+
+                const importFromCSV = () => {
+                    try {
+                        const lines = importData.trim().split('\n');
+                        if (lines.length < 2) {
+                            alert('Format CSV invalide');
+                            return;
+                        }
+                        
+                        const newData = lines.slice(1).map(line => {
+                            const [date, sportTapis, sportVelo, sportCourse, alcool, poids] = line.split(',');
+                            return {
+                                date: date.trim(),
+                                sportTapis: parseFloat(sportTapis) || 0,
+                                sportVelo: parseFloat(sportVelo) || 0,
+                                sportCourse: parseFloat(sportCourse) || 0,
+                                alcool: parseFloat(alcool) || 0,
+                                poids: parseFloat(poids) || 0
+                            };
+                        }).filter(entry => entry.date);
+                        
+                        setData(newData.sort((a, b) => new Date(a.date) - new Date(b.date)));
+                        setImportData('');
+                        alert('Données importées avec succès !');
+                    } catch (error) {
+                        alert('Erreur lors de l\'import: ' + error.message);
+                    }
+                };
+
+                const prepareChartData = () => {
+                    if (data.length === 0) return [];
+
+                    const sportValues = data.map(d => d.sportTapis + d.sportVelo + d.sportCourse);
+                    const poidsValues = data.map(d => d.poids).filter(p => p > 0);
+                    const alcoolValues = data.map(d => d.alcool);
+
+                    const sportMax = Math.max(...sportValues, 1);
+                    const poidsMin = Math.min(...poidsValues);
+                    const poidsMax = Math.max(...poidsValues);
+                    const alcoolMax = Math.max(...alcoolValues, 1);
+
+                    return data.map(item => {
+                        const sportTotal = item.sportTapis + item.sportVelo + item.sportCourse;
+                        
                         return {
-                            date: date.trim(),
-                            sportTapis: parseFloat(sportTapis) || 0,
-                            sportVelo: parseFloat(sportVelo) || 0,
-                            sportCourse: parseFloat(sportCourse) || 0,
-                            alcool: parseFloat(alcool) || 0,
-                            poids: parseFloat(poids) || 0
+                            date: formatDate(item.date),
+                            fullDate: item.date,
+                            sportTotal: sportTotal,
+                            sportTapis: item.sportTapis,
+                            sportVelo: item.sportVelo,
+                            sportCourse: item.sportCourse,
+                            poids: item.poids,
+                            poidsNormalized: item.poids > 0 && poidsMax > poidsMin ? 
+                                ((item.poids - poidsMin) / (poidsMax - poidsMin)) * sportMax * 0.8 : 0,
+                            alcool: item.alcool,
+                            alcoolNormalized: (item.alcool / alcoolMax) * sportMax * 0.6,
+                            originalPoids: item.poids,
+                            originalAlcool: item.alcool
                         };
-                    }).filter(entry => entry.date);
-                    
-                    setData(newData.sort((a, b) => new Date(a.date) - new Date(b.date)));
-                    setImportData('');
-                    alert('Données importées avec succès !');
-                } catch (error) {
-                    alert('Erreur lors de l\'import: ' + error.message);
-                }
-            };
+                    });
+                };
 
-            // Préparer les données pour le graphique unifié
-            const prepareChartData = () => {
-                if (data.length === 0) return [];
+                const chartData = prepareChartData();
 
-                const sportValues = data.map(d => d.sportTapis + d.sportVelo + d.sportCourse);
-                const poidsValues = data.map(d => d.poids).filter(p => p > 0);
-                const alcoolValues = data.map(d => d.alcool);
-
-                const sportMax = Math.max(...sportValues, 1);
-                const poidsMin = Math.min(...poidsValues);
-                const poidsMax = Math.max(...poidsValues);
-                const alcoolMax = Math.max(...alcoolValues, 1);
-
-                return data.map(item => {
-                    const sportTotal = item.sportTapis + item.sportVelo + item.sportCourse;
-                    
-                    return {
-                        date: formatDate(item.date),
-                        fullDate: item.date,
-                        sportTotal: sportTotal,
-                        sportTapis: item.sportTapis,
-                        sportVelo: item.sportVelo,
-                        sportCourse: item.sportCourse,
-                        poids: item.poids,
-                        poidsNormalized: item.poids > 0 && poidsMax > poidsMin ? 
-                            ((item.poids - poidsMin) / (poidsMax - poidsMin)) * sportMax * 0.8 : 0,
-                        alcool: item.alcool,
-                        alcoolNormalized: (item.alcool / alcoolMax) * sportMax * 0.6,
-                        originalPoids: item.poids,
-                        originalAlcool: item.alcool
-                    };
-                });
-            };
-
-            const chartData = prepareChartData();
-
-            const CustomTooltip = ({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return React.createElement('div', { 
-                        className: "bg-white p-4 border border-gray-300 rounded-lg shadow-lg" 
-                    },
-                        React.createElement('p', { className: "font-semibold mb-2" }, `Date: ${label}`),
-                        React.createElement('div', { className: "space-y-1 text-sm" },
-                            React.createElement('p', { style: { color: '#10B981' } }, 
-                                `🏃 Tapis: ${data.sportTapis} min`
-                            ),
-                            React.createElement('p', { style: { color: '#3B82F6' } }, 
-                                `🚴 Vélo: ${data.sportVelo} min`
-                            ),
-                            React.createElement('p', { style: { color: '#F59E0B' } }, 
-                                `🏃‍♂️ Course: ${data.sportCourse} min`
-                            ),
-                            React.createElement('p', { style: { color: '#8B5CF6' } }, 
-                                `📊 Total sport: ${data.sportTotal} min`
-                            ),
-                            data.originalPoids > 0 && React.createElement('p', { style: { color: '#EC4899' } }, 
-                                `⚖️ Poids: ${data.originalPoids} kg`
-                            ),
-                            React.createElement('p', { style: { color: '#EF4444' } }, 
-                                `🍷 Alcool: ${data.originalAlcool} verres`
-                            )
-                        )
-                    );
-                }
-                return null;
-            };
-
-            return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" },
-                React.createElement('div', { className: "container mx-auto px-4 py-8" },
-                    React.createElement('div', { className: "bg-white rounded-2xl shadow-xl overflow-hidden" },
-                        // Header
-                        React.createElement('div', { className: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6" },
-                            React.createElement('h1', { className: "text-3xl font-bold flex items-center gap-3" },
-                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['trending-up'].toSvg({ class: 'w-8 h-8' }) } }),
-                                "Suivi Quotidien"
-                            ),
-                            React.createElement('p', { className: "mt-2 opacity-90" }, 
-                                "Sport, Poids et Alcool - Version autonome"
-                            )
-                        ),
-
-                        // Navigation
-                        React.createElement('div', { className: "border-b border-gray-200" },
-                            React.createElement('nav', { className: "flex" },
-                                ['saisie', 'graphique', 'donnees', 'export'].map(tab => {
-                                    const labels = {
-                                        saisie: 'Saisie',
-                                        graphique: 'Graphique',
-                                        donnees: 'Données',
-                                        export: 'Import/Export'
-                                    };
-                                    const icons = {
-                                        saisie: 'plus',
-                                        graphique: 'bar-chart-3',
-                                        donnees: 'table',
-                                        export: 'download'
-                                    };
-                                    
-                                    return React.createElement('button', {
-                                        key: tab,
-                                        onClick: () => setActiveTab(tab),
-                                        className: `px-6 py-4 font-medium text-sm ${
-                                            activeTab === tab
-                                                ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                        }`
-                                    },
-                                        React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons[icons[tab]].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                        labels[tab]
-                                    );
-                                })
-                            )
-                        ),
-
-                        React.createElement('div', { className: "p-6" },
-                            // Onglet Saisie
-                            activeTab === 'saisie' && React.createElement('div', { className: "max-w-2xl mx-auto" },
-                                React.createElement('div', { className: "space-y-6" },
-                                    // Date
-                                    React.createElement('div', { className: "bg-gray-50 p-4 rounded-lg" },
-                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" },
-                                            React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['calendar'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                            "Date"
-                                        ),
-                                        React.createElement('input', {
-                                            type: "date",
-                                            value: currentEntry.date,
-                                            onChange: (e) => handleInputChange('date', e.target.value),
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        })
-                                    ),
-
-                                    // Sports
-                                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
-                                        React.createElement('div', { className: "bg-green-50 p-4 rounded-lg" },
-                                            React.createElement('label', { className: "block text-sm font-medium text-green-700 mb-2" },
-                                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['activity'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                                "Sport Tapis (min)"
-                                            ),
-                                            React.createElement('input', {
-                                                type: "number",
-                                                min: "0",
-                                                value: currentEntry.sportTapis,
-                                                onChange: (e) => handleInputChange('sportTapis', e.target.value),
-                                                className: "w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                                            })
-                                        ),
-                                        React.createElement('div', { className: "bg-blue-50 p-4 rounded-lg" },
-                                            React.createElement('label', { className: "block text-sm font-medium text-blue-700 mb-2" },
-                                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['bike'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                                "Sport Vélo (min)"
-                                            ),
-                                            React.createElement('input', {
-                                                type: "number",
-                                                min: "0",
-                                                value: currentEntry.sportVelo,
-                                                onChange: (e) => handleInputChange('sportVelo', e.target.value),
-                                                className: "w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            })
-                                        ),
-                                        React.createElement('div', { className: "bg-orange-50 p-4 rounded-lg" },
-                                            React.createElement('label', { className: "block text-sm font-medium text-orange-700 mb-2" },
-                                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['footprints'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                                "Sport Course (min)"
-                                            ),
-                                            React.createElement('input', {
-                                                type: "number",
-                                                min: "0",
-                                                value: currentEntry.sportCourse,
-                                                onChange: (e) => handleInputChange('sportCourse', e.target.value),
-                                                className: "w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                            })
-                                        )
-                                    ),
-
-                                    // Alcool et Poids
-                                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
-                                        React.createElement('div', { className: "bg-red-50 p-4 rounded-lg" },
-                                            React.createElement('label', { className: "block text-sm font-medium text-red-700 mb-2" },
-                                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['wine'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                                "Alcool (verres)"
-                                            ),
-                                            React.createElement('input', {
-                                                type: "number",
-                                                min: "0",
-                                                step: "0.5",
-                                                value: currentEntry.alcool,
-                                                onChange: (e) => handleInputChange('alcool', e.target.value),
-                                                className: "w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                                            })
-                                        ),
-                                        React.createElement('div', { className: "bg-purple-50 p-4 rounded-lg" },
-                                            React.createElement('label', { className: "block text-sm font-medium text-purple-700 mb-2" },
-                                                React.createElement('span', { dangerouslySetInnerHTML: { __html: lucide.icons['weight'].toSvg({ class: 'w-4 h-4 inline mr-2' }) } }),
-                                                "Poids (kg)"
-                                            ),
-                                            React.createElement('input', {
-                                                type: "number",
-                                                min: "0",
-                                                step: "0.1",
-                                                value: currentEntry.poids,
-                                                onChange: (e) => handleInputChange('poids', e.target.value),
-                                                className: "w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                            })
-                                        )
-                                    ),
-
-                                    React.createElement('button', {
-                                        onClick: handleSubmit,
-                                        className: "w-full py-3 px-6 rounded-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-colors"
-                                    }, 'Enregistrer les données')
-                                )
-                            ),
-
-                            // Onglet Graphique
-                            activeTab === 'graphique' && React.createElement('div', { className: "space-y-6" },
-                                data.length === 0 ? React.createElement('div', { className: "text-center py-12" },
-                                    React.createElement('p', { className: "text-gray-500 text-lg" }, 
-                                        "Aucune donnée à afficher. Commencez par saisir vos premières données !"
-                                    )
-                                ) : React.createElement('div', { className: "bg-white border border-gray-200 rounded-lg p-6" },
-                                    React.createElement('h3', { className: "text-xl font-semibold text-gray-900 mb-4" }, 
-                                        "Vue d'ensemble - Toutes les métriques"
-                                    ),
-                                    React.createElement('div', { className: "mb-4 text-sm text-gray-600 space-y-1" },
-                                        React.createElement('p', null, "📊 Les barres violettes représentent le sport total (échelle de gauche)"),
-                                        React.createElement('p', null, "⚖️ La ligne rose en pointillés représente le poids (valeurs réelles dans les tooltips)"),
-                                        React.createElement('p', null, "🍷 La ligne rouge en pointillés représente l'alcool (valeurs réelles dans les tooltips)")
-                                    ),
-                                    React.createElement(ResponsiveContainer, { width: "100%", height: 400 },
-                                        React.createElement(ComposedChart, { data: chartData },
-                                            React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
-                                            React.createElement(XAxis, { dataKey: "date" }),
-                                            React.createElement(YAxis, { 
-                                                yAxisId: "left", 
-                                                orientation: "left",
-                                                label: { value: 'Sport (minutes)', angle: -90, position: 'insideLeft' }
-                                            }),
-                                            React.createElement(Tooltip, { content: React.createElement(CustomTooltip) }),
-                                            React.createElement(Legend),
-                                            
-                                            // Barres pour le sport total
-                                            React.createElement(Bar, { 
-                                                yAxisId: "left",
-                                                dataKey: "sportTotal", 
-                                                fill: "#8B5CF6", 
-                                                name: "Sport Total",
-                                                opacity: 0.8
-                                            }),
-                                            
-                                            // Lignes pour les sports individuels
-                                            React.createElement(Line, { 
-                                                yAxisId: "left",
-                                                type: "monotone", 
-                                                dataKey: "sportTapis", 
-                                                stroke: "#10B981", 
-                                                strokeWidth: 2, 
-                                                name: "Tapis",
-                                                dot: { r: 4 }
-                                            }),
-                                            React.createElement(Line, { 
-                                                yAxisId: "left",
-                                                type: "monotone", 
-                                                dataKey: "sportVelo", 
-                                                stroke: "#3B82F6", 
-                                                strokeWidth: 2, 
-                                                name: "Vélo",
-                                                dot: { r: 4 }
-                                            }),
-                                            React.createElement(Line, { 
-                                                yAxisId: "left",
-                                                type: "monotone", 
-                                                dataKey: "sportCourse", 
-                                                stroke: "#F59E0B", 
-                                                strokeWidth: 2, 
-                                                name: "Course",
-                                                dot: { r: 4 }
-                                            }),
-                                            
-                                            // Lignes pour poids et alcool (normalisées)
-                                            React.createElement(Line, { 
-                                                yAxisId: "left",
-                                                type: "monotone", 
-                                                dataKey: "poidsNormalized", 
-                                                stroke: "#EC4899", 
-                                                strokeWidth: 3, 
-                                                name: "Poids (normalisé)",
-                                                dot: { r: 5 },
-                                                strokeDasharray: "5 5"
-                                            }),
-                                            React.createElement(Line, { 
-                                                yAxisId: "left",
-                                                type: "monotone", 
-                                                dataKey: "alcoolNormalized", 
-                                                stroke: "#EF4444", 
-                                                strokeWidth: 3, 
-                                                name: "Alcool (normalisé)",
-                                                dot: { r: 5 },
-                                                strokeDasharray: "10 5"
-                                            })
-                                        )
-                                    )
-                                )
-                            ),
-
-                            // Onglet Données
-                            activeTab === 'donnees' && React.createElement('div', { className: "space-y-4" },
-                                React.createElement('h3', { className: "text-xl font-semibold text-gray-900" }, 
-                                    "Historique des données"
+                const CustomTooltip = ({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return React.createElement('div', { 
+                            className: "bg-white p-4 border border-gray-300 rounded-lg shadow-lg" 
+                        },
+                            React.createElement('p', { className: "font-semibold mb-2" }, `Date: ${label}`),
+                            React.createElement('div', { className: "space-y-1 text-sm" },
+                                React.createElement('p', { style: { color: '#10B981' } }, 
+                                    `🏃 Tapis: ${data.sportTapis} min`
                                 ),
-                                data.length === 0 ? React.createElement('p', { className: "text-gray-500" }, 
-                                    "Aucune donnée enregistrée"
-                                ) : React.createElement('div', { className: "overflow-x-auto" },
-                                    React.createElement('table', { className: "min-w-full bg-white border border-gray-300 rounded-lg" },
-                                        React.createElement('thead', { className: "bg-gray-50" },
-                                            React.createElement('tr', null,
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Date"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Tapis"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Vélo"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Course"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Alcool"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Poids"),
-                                                React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Actions")
+                                React.createElement('p', { style: { color: '#3B82F6' } }, 
+                                    `🚴 Vélo: ${data.sportVelo} min`
+                                ),
+                                React.createElement('p', { style: { color: '#F59E0B' } }, 
+                                    `🏃‍♂️ Course: ${data.sportCourse} min`
+                                ),
+                                React.createElement('p', { style: { color: '#8B5CF6' } }, 
+                                    `📊 Total sport: ${data.sportTotal} min`
+                                ),
+                                data.originalPoids > 0 && React.createElement('p', { style: { color: '#EC4899' } }, 
+                                    `⚖️ Poids: ${data.originalPoids} kg`
+                                ),
+                                React.createElement('p', { style: { color: '#EF4444' } }, 
+                                    `🍷 Alcool: ${data.originalAlcool} verres`
+                                )
+                            )
+                        );
+                    }
+                    return null;
+                };
+
+                // Fonction pour créer les icônes Lucide (fallback si lucide ne charge pas)
+                const createIcon = (iconName, className = "w-4 h-4") => {
+                    if (typeof lucide !== 'undefined' && lucide.icons && lucide.icons[iconName]) {
+                        return React.createElement('span', { 
+                            dangerouslySetInnerHTML: { 
+                                __html: lucide.icons[iconName].toSvg({ class: className }) 
+                            } 
+                        });
+                    }
+                    // Fallback simple si lucide ne charge pas
+                    return React.createElement('span', { className: `${className} inline-block` }, '📊');
+                };
+
+                return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" },
+                    React.createElement('div', { className: "container mx-auto px-4 py-8" },
+                        React.createElement('div', { className: "bg-white rounded-2xl shadow-xl overflow-hidden" },
+                            // Header
+                            React.createElement('div', { className: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6" },
+                                React.createElement('h1', { className: "text-3xl font-bold flex items-center gap-3" },
+                                    createIcon('trending-up', 'w-8 h-8'),
+                                    "Suivi Quotidien"
+                                ),
+                                React.createElement('p', { className: "mt-2 opacity-90" }, 
+                                    "Sport, Poids et Alcool - Version autonome"
+                                )
+                            ),
+
+                            // Navigation
+                            React.createElement('div', { className: "border-b border-gray-200" },
+                                React.createElement('nav', { className: "flex flex-wrap" },
+                                    ['saisie', 'graphique', 'donnees', 'export'].map(tab => {
+                                        const labels = {
+                                            saisie: 'Saisie',
+                                            graphique: 'Graphique',
+                                            donnees: 'Données',
+                                            export: 'Import/Export'
+                                        };
+                                        const icons = {
+                                            saisie: 'plus',
+                                            graphique: 'bar-chart-3',
+                                            donnees: 'table',
+                                            export: 'download'
+                                        };
+                                        
+                                        return React.createElement('button', {
+                                            key: tab,
+                                            onClick: () => setActiveTab(tab),
+                                            className: `px-4 py-3 font-medium text-sm ${
+                                                activeTab === tab
+                                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            }`
+                                        },
+                                            createIcon(icons[tab], 'w-4 h-4 inline mr-2'),
+                                            labels[tab]
+                                        );
+                                    })
+                                )
+                            ),
+
+                            React.createElement('div', { className: "p-6" },
+                                // Onglet Saisie
+                                activeTab === 'saisie' && React.createElement('div', { className: "max-w-2xl mx-auto" },
+                                    React.createElement('div', { className: "space-y-6" },
+                                        // Date
+                                        React.createElement('div', { className: "bg-gray-50 p-4 rounded-lg" },
+                                            React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" },
+                                                createIcon('calendar', 'w-4 h-4 inline mr-2'),
+                                                "Date"
+                                            ),
+                                            React.createElement('input', {
+                                                type: "date",
+                                                value: currentEntry.date,
+                                                onChange: (e) => handleInputChange('date', e.target.value),
+                                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            })
+                                        ),
+
+                                        // Sports
+                                        React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
+                                            React.createElement('div', { className: "bg-green-50 p-4 rounded-lg" },
+                                                React.createElement('label', { className: "block text-sm font-medium text-green-700 mb-2" },
+                                                    createIcon('activity', 'w-4 h-4 inline mr-2'),
+                                                    "Sport Tapis (min)"
+                                                ),
+                                                React.createElement('input', {
+                                                    type: "number",
+                                                    min: "0",
+                                                    value: currentEntry.sportTapis,
+                                                    onChange: (e) => handleInputChange('sportTapis', e.target.value),
+                                                    className: "w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                })
+                                            ),
+                                            React.createElement('div', { className: "bg-blue-50 p-4 rounded-lg" },
+                                                React.createElement('label', { className: "block text-sm font-medium text-blue-700 mb-2" },
+                                                    createIcon('bike', 'w-4 h-4 inline mr-2'),
+                                                    "Sport Vélo (min)"
+                                                ),
+                                                React.createElement('input', {
+                                                    type: "number",
+                                                    min: "0",
+                                                    value: currentEntry.sportVelo,
+                                                    onChange: (e) => handleInputChange('sportVelo', e.target.value),
+                                                    className: "w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                })
+                                            ),
+                                            React.createElement('div', { className: "bg-orange-50 p-4 rounded-lg" },
+                                                React.createElement('label', { className: "block text-sm font-medium text-orange-700 mb-2" },
+                                                    createIcon('footprints', 'w-4 h-4 inline mr-2'),
+                                                    "Sport Course (min)"
+                                                ),
+                                                React.createElement('input', {
+                                                    type: "number",
+                                                    min: "0",
+                                                    value: currentEntry.sportCourse,
+                                                    onChange: (e) => handleInputChange('sportCourse', e.target.value),
+                                                    className: "w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                                })
                                             )
                                         ),
-                                        React.createElement('tbody', null,
-                                            data.map((entry, index) => 
-                                                React.createElement('tr', { key: entry.date, className: index % 2 === 0 ? 'bg-gray-50' : 'bg-white' },
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        new Date(entry.date).toLocaleDateString('fr-FR')
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        entry.sportTapis + ' min'
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        entry.sportVelo + ' min'
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        entry.sportCourse + ' min'
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        entry.alcool + ' verres'
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
-                                                        entry.poids > 0 ? entry.poids + ' kg' : '-'
-                                                    ),
-                                                    React.createElement('td', { className: "px-4 py-2 text-sm border-b" },
-                                                        React.createElement('button', {
-                                                            onClick: () => handleDelete(entry.date),
-                                                            className: "text-red-600 hover:text-red-800 text-sm"
-                                                        }, 'Supprimer')
+
+                                        // Alcool et Poids
+                                        React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
+                                            React.createElement('div', { className: "bg-red-50 p-4 rounded-lg" },
+                                                React.createElement('label', { className: "block text-sm font-medium text-red-700 mb-2" },
+                                                    createIcon('wine', 'w-4 h-4 inline mr-2'),
+                                                    "Alcool (verres)"
+                                                ),
+                                                React.createElement('input', {
+                                                    type: "number",
+                                                    min: "0",
+                                                    step: "0.5",
+                                                    value: currentEntry.alcool,
+                                                    onChange: (e) => handleInputChange('alcool', e.target.value),
+                                                    className: "w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                })
+                                            ),
+                                            React.createElement('div', { className: "bg-purple-50 p-4 rounded-lg" },
+                                                React.createElement('label', { className: "block text-sm font-medium text-purple-700 mb-2" },
+                                                    createIcon('weight', 'w-4 h-4 inline mr-2'),
+                                                    "Poids (kg)"
+                                                ),
+                                                React.createElement('input', {
+                                                    type: "number",
+                                                    min: "0",
+                                                    step: "0.1",
+                                                    value: currentEntry.poids,
+                                                    onChange: (e) => handleInputChange('poids', e.target.value),
+                                                    className: "w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                })
+                                            )
+                                        ),
+
+                                        React.createElement('button', {
+                                            onClick: handleSubmit,
+                                            className: "w-full py-3 px-6 rounded-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                                        }, 'Enregistrer les données')
+                                    )
+                                ),
+
+                                // Onglet Graphique
+                                activeTab === 'graphique' && React.createElement('div', { className: "space-y-6" },
+                                    data.length === 0 ? React.createElement('div', { className: "text-center py-12" },
+                                        React.createElement('p', { className: "text-gray-500 text-lg" }, 
+                                            "Aucune donnée à afficher. Commencez par saisir vos premières données !"
+                                        )
+                                    ) : (Recharts ? React.createElement('div', { className: "bg-white border border-gray-200 rounded-lg p-6" },
+                                        React.createElement('h3', { className: "text-xl font-semibold text-gray-900 mb-4" }, 
+                                            "Vue d'ensemble - Toutes les métriques"
+                                        ),
+                                        React.createElement('div', { className: "mb-4 text-sm text-gray-600 space-y-1" },
+                                            React.createElement('p', null, "📊 Les barres violettes représentent le sport total"),
+                                            React.createElement('p', null, "⚖️ La ligne rose en pointillés représente le poids"),
+                                            React.createElement('p', null, "🍷 La ligne rouge en pointillés représente l'alcool")
+                                        ),
+                                        React.createElement(ResponsiveContainer, { width: "100%", height: 400 },
+                                            React.createElement(ComposedChart, { data: chartData },
+                                                React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
+                                                React.createElement(XAxis, { dataKey: "date" }),
+                                                React.createElement(YAxis, { 
+                                                    yAxisId: "left", 
+                                                    orientation: "left",
+                                                    label: { value: 'Sport (minutes)', angle: -90, position: 'insideLeft' }
+                                                }),
+                                                React.createElement(Tooltip, { content: React.createElement(CustomTooltip) }),
+                                                React.createElement(Legend),
+                                                
+                                                React.createElement(Bar, { 
+                                                    yAxisId: "left",
+                                                    dataKey: "sportTotal", 
+                                                    fill: "#8B5CF6", 
+                                                    name: "Sport Total",
+                                                    opacity: 0.8
+                                                }),
+                                                
+                                                React.createElement(Line, { 
+                                                    yAxisId: "left",
+                                                    type: "monotone", 
+                                                    dataKey: "sportTapis", 
+                                                    stroke: "#10B981", 
+                                                    strokeWidth: 2, 
+                                                    name: "Tapis",
+                                                    dot: { r: 4 }
+                                                }),
+                                                React.createElement(Line, { 
+                                                    yAxisId: "left",
+                                                    type: "monotone", 
+                                                    dataKey: "sportVelo", 
+                                                    stroke: "#3B82F6", 
+                                                    strokeWidth: 2, 
+                                                    name: "Vélo",
+                                                    dot: { r: 4 }
+                                                }),
+                                                React.createElement(Line, { 
+                                                    yAxisId: "left",
+                                                    type: "monotone", 
+                                                    dataKey: "sportCourse", 
+                                                    stroke: "#F59E0B", 
+                                                    strokeWidth: 2, 
+                                                    name: "Course",
+                                                    dot: { r: 4 }
+                                                }),
+                                                
+                                                React.createElement(Line, { 
+                                                    yAxisId: "left",
+                                                    type: "monotone", 
+                                                    dataKey: "poidsNormalized", 
+                                                    stroke: "#EC4899", 
+                                                    strokeWidth: 3, 
+                                                    name: "Poids (normalisé)",
+                                                    dot: { r: 5 },
+                                                    strokeDasharray: "5 5"
+                                                }),
+                                                React.createElement(Line, { 
+                                                    yAxisId: "left",
+                                                    type: "monotone", 
+                                                    dataKey: "alcoolNormalized", 
+                                                    stroke: "#EF4444", 
+                                                    strokeWidth: 3, 
+                                                    name: "Alcool (normalisé)",
+                                                    dot: { r: 5 },
+                                                    strokeDasharray: "10 5"
+                                                })
+                                            )
+                                        )
+                                    ) : React.createElement('div', { className: "text-center py-12" },
+                                        React.createElement('p', { className: "text-gray-500" }, 
+                                            "Graphiques non disponibles - Recharts ne s'est pas chargé correctement"
+                                        )
+                                    ))
+                                ),
+
+                                // Onglet Données
+                                activeTab === 'donnees' && React.createElement('div', { className: "space-y-4" },
+                                    React.createElement('h3', { className: "text-xl font-semibold text-gray-900" }, 
+                                        "Historique des données"
+                                    ),
+                                    data.length === 0 ? React.createElement('p', { className: "text-gray-500" }, 
+                                        "Aucune donnée enregistrée"
+                                    ) : React.createElement('div', { className: "overflow-x-auto" },
+                                        React.createElement('table', { className: "min-w-full bg-white border border-gray-300 rounded-lg" },
+                                            React.createElement('thead', { className: "bg-gray-50" },
+                                                React.createElement('tr', null,
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Date"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Tapis"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Vélo"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Course"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Alcool"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Poids"),
+                                                    React.createElement('th', { className: "px-4 py-2 text-left text-sm font-medium text-gray-700 border-b" }, "Actions")
+                                                )
+                                            ),
+                                            React.createElement('tbody', null,
+                                                data.map((entry, index) => 
+                                                    React.createElement('tr', { key: entry.date, className: index % 2 === 0 ? 'bg-gray-50' : 'bg-white' },
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            new Date(entry.date).toLocaleDateString('fr-FR')
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            entry.sportTapis + ' min'
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            entry.sportVelo + ' min'
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            entry.sportCourse + ' min'
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            entry.alcool + ' verres'
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm text-gray-900 border-b" }, 
+                                                            entry.poids > 0 ? entry.poids + ' kg' : '-'
+                                                        ),
+                                                        React.createElement('td', { className: "px-4 py-2 text-sm border-b" },
+                                                            React.createElement('button', {
+                                                                onClick: () => handleDelete(entry.date),
+                                                                className: "text-red-600 hover:text-red-800 text-sm"
+                                                            }, 'Supprimer')
+                                                        )
                                                     )
                                                 )
                                             )
                                         )
                                     )
-                                )
-                            ),
-
-                            // Onglet Import/Export
-                            activeTab === 'export' && React.createElement('div', { className: "max-w-2xl mx-auto space-y-6" },
-                                React.createElement('h3', { className: "text-xl font-semibold text-gray-900" }, 
-                                    "Import/Export des données"
-                                ),
-                                
-                                // Export
-                                React.createElement('div', { className: "bg-green-50 p-6 rounded-lg" },
-                                    React.createElement('h4', { className: "text-lg font-medium text-green-800 mb-4" }, "Export CSV"),
-                                    React.createElement('button', {
-                                        onClick: exportToCSV,
-                                        className: "mb-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                                    }, 'Générer CSV'),
-                                    exportData && React.createElement('textarea', {
-                                        value: exportData,
-                                        readOnly: true,
-                                        className: "w-full h-32 p-3 border border-green-300 rounded-md font-mono text-sm",
-                                        placeholder: "Les données CSV apparaîtront ici..."
-                                    })
-                                ),
-                                
-                                // Import
-                                React.createElement('div', { className: "bg-blue-50 p-6 rounded-lg" },
-                                    React.createElement('h4', { className: "text-lg font-medium text-blue-800 mb-4" }, "Import CSV"),
-                                    React.createElement('textarea', {
-                                        value: importData,
-                                        onChange: (e) => setImportData(e.target.value),
-                                        className: "w-full h-32 p-3 border border-blue-300 rounded-md font-mono text-sm mb-4",
-                                        placeholder: "Collez ici vos données CSV...\nFormat: Date,Sport Tapis (min),Sport Vélo (min),Sport Course (min),Alcool (verres),Poids (kg)"
-                                    }),
-                                    React.createElement('button', {
-                                        onClick: importFromCSV,
-                                        disabled: !importData.trim(),
-                                        className: "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                    }, 'Importer CSV')
                                 ),
 
-                                // Instructions
-                                React.createElement('div', { className: "bg-gray-50 p-6 rounded-lg" },
-                                    React.createElement('h4', { className: "text-lg font-medium text-gray-800 mb-4" }, "Instructions"),
-                                    React.createElement('div', { className: "space-y-2 text-sm text-gray-700" },
-                                        React.createElement('p', null, "• L'export génère un fichier CSV que vous pouvez sauvegarder"),
-                                        React.createElement('p', null, "• Pour importer, collez le contenu CSV dans la zone de texte"),
-                                        React.createElement('p', null, "• Format CSV requis : Date,Tapis,Vélo,Course,Alcool,Poids"),
-                                        React.createElement('p', null, "• Les données sont stockées localement dans votre navigateur"),
-                                        React.createElement('p', null, "• Attention : l'import remplace toutes les données existantes")
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            );
-        };
-
-        ReactDOM.render(React.createElement(DailyTracker), document.getElementById('root'));
-    </script>
-</body>
-</html>
+                                // Onglet Import/Export
+                                activeTab === 'export' && React.createElement('div', { className: "max-w-2xl mx-auto space-y-6" },
+                                    React.createElement('h3', { className: "text-xl font-semibold text-gray-900" }, 
+                                        "Import/Export des données"
+                                    ),
+                                    
+                                    // Export
+                                    React.createElement('div', { className: "bg-green-50 p-6 rounded-lg" },
+                                        React.createElement('h4', { className: "text-lg font-medium text-green-800 mb-4" }, "Export CSV"),
+                                        React.createElement('button', {
+                                            onClick: exportToCSV,
+                                            className: "mb

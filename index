@@ -568,4 +568,70 @@
                                         React.createElement('h4', { className: "text-lg font-medium text-green-800 mb-4" }, "Export CSV"),
                                         React.createElement('button', {
                                             onClick: exportToCSV,
-                                            className: "mb
+                                            className: "mb-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                        }, 'Générer CSV'),
+                                        exportData && React.createElement('textarea', {
+                                            value: exportData,
+                                            readOnly: true,
+                                            className: "w-full h-32 p-3 border border-green-300 rounded-md font-mono text-sm",
+                                            placeholder: "Les données CSV apparaîtront ici..."
+                                        })
+                                    ),
+                                    
+                                    // Import
+                                    React.createElement('div', { className: "bg-blue-50 p-6 rounded-lg" },
+                                        React.createElement('h4', { className: "text-lg font-medium text-blue-800 mb-4" }, "Import CSV"),
+                                        React.createElement('textarea', {
+                                            value: importData,
+                                            onChange: (e) => setImportData(e.target.value),
+                                            className: "w-full h-32 p-3 border border-blue-300 rounded-md font-mono text-sm mb-4",
+                                            placeholder: "Collez ici vos données CSV...\nFormat: Date,Sport Tapis (min),Sport Vélo (min),Sport Course (min),Alcool (verres),Poids (kg)"
+                                        }),
+                                        React.createElement('button', {
+                                            onClick: importFromCSV,
+                                            disabled: !importData.trim(),
+                                            className: "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        }, 'Importer CSV')
+                                    ),
+
+                                    // Instructions
+                                    React.createElement('div', { className: "bg-gray-50 p-6 rounded-lg" },
+                                        React.createElement('h4', { className: "text-lg font-medium text-gray-800 mb-4" }, "Instructions"),
+                                        React.createElement('div', { className: "space-y-2 text-sm text-gray-700" },
+                                            React.createElement('p', null, "• L'export génère un fichier CSV que vous pouvez sauvegarder"),
+                                            React.createElement('p', null, "• Pour importer, collez le contenu CSV dans la zone de texte"),
+                                            React.createElement('p', null, "• Format CSV requis : Date,Tapis,Vélo,Course,Alcool,Poids"),
+                                            React.createElement('p', null, "• Les données sont stockées temporairement dans cette session"),
+                                            React.createElement('p', null, "• Attention : l'import remplace toutes les données existantes")
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
+            };
+
+            // Attendre que toutes les dépendances soient chargées
+            const renderApp = () => {
+                try {
+                    ReactDOM.render(React.createElement(DailyTracker), document.getElementById('root'));
+                    console.log('Application rendue avec succès');
+                } catch (error) {
+                    console.error('Erreur lors du rendu:', error);
+                    document.getElementById('root').innerHTML = `
+                        <div style="padding: 20px; text-align: center; color: red;">
+                            <h2>Erreur de rendu</h2>
+                            <p>Une erreur est survenue lors du chargement de l'application.</p>
+                            <p>Erreur: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            };
+
+            // Démarrer l'application après un court délai pour s'assurer que tout est chargé
+            setTimeout(renderApp, 100);
+        }
+    </script>
+</body>
+</html>
